@@ -1,19 +1,20 @@
 from dataclasses import dataclass, field
 
-from pyshelem.engine.card import Card
+from pyshelem.engine.card import Card, Deck
 
 
-@dataclass
+@dataclass(frozen=True)
 class Trick:
     trump_suit: int
-    cards: list[Card]
-    joker_suit: int = 4
+    cards: (Card, Card, Card, Card)
+    first_player: int
 
-    def get_winner(self) -> int:
+    @property
+    def winner(self) -> int:
         first_card_suit = self.cards[0].suit
         card_tuples = (
             (
-                self.joker_suit == card.suit,  # joker
+                Card.joker_suit == card.suit,  # joker
                 self.trump_suit == card.suit,  # trump
                 first_card_suit == card.suit,  # same as the first suit
                 card.rank,  # rank
@@ -24,6 +25,14 @@ class Trick:
         sorted_cards = sorted(card_tuples, reverse=True)
         return sorted_cards[0][-1]
 
-    def get_point(self) -> int:
-        score = 5 + sum(card.get_point(self.joker_suit) for card in self.cards)
+    @property
+    def point(self) -> int:
+        score = 5 + sum(card.point for card in self.cards)
         return score
+
+    @property
+    def first_card(self) -> Card:
+        return self.cards[self.first_player]
+
+    def __len__(self):
+        return len(self.cards)

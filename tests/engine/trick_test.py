@@ -36,8 +36,8 @@ from pyshelem.engine.trick import Trick
     ],
 )
 def test_trick_winner(cards: tuple[Card], trump_suit: int, winner_idx: int) -> None:
-    trick = Trick(trump_suit, cards)
-    assert trick.get_winner() == winner_idx
+    trick = Trick(trump_suit, cards, 0)
+    assert trick.winner == winner_idx
 
 
 deck = Deck()
@@ -65,5 +65,5 @@ deck = Deck()
     ],
 )
 def test_trick_point(cards: tuple[Card], trump_suit: int, expected_point: int) -> None:
-    trick = Trick(trump_suit, cards)
-    assert trick.get_point() == expected_point
+    trick = Trick(trump_suit, cards, 0)
+    assert trick.point == expected_point

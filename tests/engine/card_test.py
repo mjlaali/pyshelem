@@ -33,4 +33,4 @@ def test_deck(str_card: str, expected_card: Card):
 def test_card_score(card: str, expected_score: int):
     deck = Deck()
 
-    assert deck[card].get_point(4) == expected_score
+    assert deck[card].point == expected_score
