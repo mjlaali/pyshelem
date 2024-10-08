@@ -6,7 +6,7 @@ from pyshelem.engine.card import Card, Deck
 @dataclass(frozen=True)
 class Trick:
     trump_suit: int
-    cards: (Card, Card, Card, Card)
+    cards: tuple[Card, Card, Card, Card]
     first_player: int
 
     @property

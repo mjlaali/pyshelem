@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, replace, field
 
 from pyshelem.engine.card import Card, Deck
 from pyshelem.engine.trick import Trick
@@ -67,69 +67,102 @@ class ShelemPlayer:
     def play(self, state: TurnState) -> Card:
         pass
 
+    def bet(self, cards: set[Card]) -> int:
+        pass
+
+    def discard(self, cards: set[Card], left_over_cards: set[Card]) -> set[Card]:
+        pass
+
 
 @dataclass
 class Shelem:
-    deck: Deck
-    validator: Validator
-    # These need to change after a trick get completed
-    tricks: tuple[Trick]
-
-    # These will not change during the game
-    player_bets: tuple[int]
-    bet_winner: int
-    trump_suit: int | None
-
+    pad_card: Card
+    player_cards: list[set[Card]]
+    left_over_cards: set[Card]
     players: tuple[ShelemPlayer, ShelemPlayer, ShelemPlayer, ShelemPlayer]
+    starting_player: int
 
-    def play_card(self, state: TurnState, current_player_action: Card) -> TurnState:
+    max_bet_value: int = -1
+    tricks: list[Trick] = field(default_factory=list)
+    discarded_card: set[Card] = field(default_factory=set)
+    validator: Validator | None = None
+
+    def __post_init__(self):
+        if self.validator is None:
+            self.validator = Validator(self.pad_card)
+
+    def play(self):
+        # betting rounds
+        first_player = self.betting_round()
+
+        # discarding
+        self.discarding_round(first_player)
+
+        state = self.set_trump(first_player)
+
+        while len(self.tricks) != 12:
+            card = self.players[state.player_idx].play(state)
+            point, state = self.play_card(state, card)
+
+        self.report_results()
+
+    def play_card(
+        self, state: TurnState, current_player_action: Card
+    ) -> tuple[int, TurnState]:
         valid_card = self.validator(state)
         if current_player_action in valid_card:
             point = state.played(current_player_action)
         else:
             point = -1
 
-        return state
-
-    def bet(self):
-        pass
-
-    def pick_trump(self, state: TurnState) -> TurnState:
-        pass
+        return point, state
 
     def report_results(self):
         pass
 
-    def play(self):
-        num_player = len(self.players)
+    def set_trump(self, first_player: int) -> TurnState:
         state = TurnState(
-            players_cards=[set() for _ in range(num_player)],
+            players_cards=self.player_cards,
             trick=Trick(
                 trump_suit=-1,
-                cards=(self.deck["PAD"] for _ in range(num_player)),
-                first_player=-1,
+                cards=[self.pad_card, self.pad_card, self.pad_card, self.pad_card],
+                first_player=first_player,
             ),
-            player_valid_cards=set(),
-            player_idx=-1,
+            player_valid_cards=self.player_cards[first_player],
+            player_idx=first_player,
             validator=self.validator,
         )
+        # set the trump
+        card = self.players[state.player_idx].play(state)
+        point, state = self.play_card(state, card)
+        state = replace(state, trick=replace(state.trick, trump_suit=card.suit))
+        return state
 
-        deck_cards = self.deck.deck_cards
+    def discarding_round(self, first_player: int) -> None:
+        self.discarded_card = self.players[first_player].discard(
+            self.player_cards[first_player], self.left_over_cards
+        )
+        assert len(self.discarded_card) == len(self.left_over_cards)
+        self.player_cards[first_player] = (
+            self.player_cards[first_player].union(self.left_over_cards)
+            - self.discarded_card
+        )
 
-        card_idx = 0
-        for player_idx in range(num_player):
-            for i in range(12):
-                state.players_cards[i].add(deck_cards[card_idx])
-                card_idx += 1
+    def betting_round(self) -> int:
+        num_player = len(self.players)
+        left_players = list(range(num_player))
+        idx = self.starting_player
+        max_bet_value = 0
+        while len(left_players) > 1:
+            player_idx = left_players[idx]
+            bet_value = self.players[player_idx].bet(self.player_cards[player_idx])
+            if bet_value > max_bet_value:
+                max_bet_value = bet_value
+                idx += 1
+            else:
+                left_players.remove(player_idx)
 
-        three_passes = False
-        while not three_passes:
-            self.bet()
-
-        state = self.pick_trump(state)
-
-        while len(self.tricks) != 12:
-            card = self.players[state.player_idx].play(state)
-            self.play_card(state, card)
-
-        self.report_results()
+            idx = idx % len(left_players)
+        self.max_bet_value = max_bet_value
+        first_player = left_players[0]
+        return first_player

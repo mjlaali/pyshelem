@@ -64,14 +64,18 @@ class Deck:
         return self._shuffle_card
 
     @deck_cards.setter
-    def deck_cards(self, str_cards: list[str]):
-        if len(str_cards) != self.len - 1:
+    def deck_cards(self, cards: list[Card]):
+        self._shuffle_card = cards
+
+    def parse_cards(self, str_cards: str) -> list[Card]:
+        if len(str_cards) // 2 != self.len - 1:
             raise ValueError(
                 f"The length of input string {len(str_cards)} != {self.len - 1}"
             )
-        if len(set(str_cards)) != len(str_cards):
-            raise ValueError(f"There is duplicate in cards: {str_cards}")
-        self._shuffle_card = [self[a_card] for a_card in str_cards]
+        cards = [self[str_cards[s : s + 2]] for s in range(0, len(str_cards), 2)]
+        if len(set(cards)) != len(cards):
+            raise ValueError(f"There is duplicate in cards: {cards}")
+        return cards
 
     def __len__(self):
         return self.len
