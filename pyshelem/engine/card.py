@@ -27,7 +27,7 @@ class Card:
 
 
 class Deck:
-    def __init__(self, with_jocker: bool = True):
+    def __init__(self, with_joker: bool = True):
         self.cards = {}
         self.pad_idx = pad_idx = 0
         self.cards[pad_idx] = self.cards["PAD"] = Card(-1, -1, pad_idx)
@@ -40,7 +40,7 @@ class Deck:
                 self.cards[idx] = self.cards[f"{r}{s}"] = Card(si, ri, idx)
                 idx += 1
 
-        if with_jocker:
+        if with_joker:
             self.cards[idx] = self.cards["2J"] = Card(4, 0, idx)
             idx += 1
             self.cards[idx] = self.cards["AJ"] = Card(4, 1, idx)
