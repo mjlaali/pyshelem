@@ -68,10 +68,6 @@ class Deck:
         self._shuffle_card = cards
 
     def parse_cards(self, str_cards: str) -> list[Card]:
-        if len(str_cards) // 2 != self.len - 1:
-            raise ValueError(
-                f"The length of input string {len(str_cards)} != {self.len - 1}"
-            )
         cards = [self[str_cards[s : s + 2]] for s in range(0, len(str_cards), 2)]
         if len(set(cards)) != len(cards):
             raise ValueError(f"There is duplicate in cards: {cards}")

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC
 from dataclasses import dataclass, replace, field
 
 from pyshelem.engine.card import Card, Deck
@@ -63,11 +64,11 @@ class Validator:
         return hand
 
 
-class ShelemPlayer:
+class ShelemPlayer(ABC):
     def play(self, state: TurnState) -> Card:
         pass
 
-    def bet(self, cards: set[Card]) -> int:
+    def bid(self, cards: set[Card]) -> int:
         pass
 
     def discard(self, cards: set[Card], left_over_cards: set[Card]) -> set[Card]:
