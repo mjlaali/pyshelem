@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from abc import ABC
+from collections import defaultdict
 from dataclasses import dataclass, replace, field
 
-from pyshelem.engine.card import Card, Deck
+from pyshelem.engine.card import Card
 from pyshelem.engine.trick import Trick
 
 
@@ -21,7 +22,8 @@ class TurnState:
     def play(self, card: Card) -> int | None:
         if card not in self.player_valid_cards:
             raise RuntimeError(
-                f"This is not a valid card for this player, played: {str(card)}, valid cards: {str(self.player_valid_cards)} "
+                f"This is not a valid card for this player, played: {str(card)}, "
+                f"valid cards: {str(self.player_valid_cards)} "
             )
         # Get the player card
         self.players_cards[self.player_idx].remove(card)
@@ -86,6 +88,55 @@ class ShelemPlayer(ABC):
 
 
 @dataclass
+class GameResults:
+    discarded_card: list[Card]
+    final_state: TurnState
+    max_bid_value: int
+
+    @property
+    def player_points(self) -> dict[int, list[int]]:
+        res = defaultdict(list)
+        if len(self.final_state.game_tricks) != 12:
+            raise ValueError(
+                f"Game is not finished, only {len(self.final_state.game_tricks)} has been played."
+            )
+        game_tricks = self.final_state.game_tricks
+
+        # Add discarded card points
+        discarded_card_point = Trick(
+            trump_suit=game_tricks[0].trump_suit,
+            cards=tuple(self.discarded_card),
+            first_player=-1,
+        ).point
+
+        res[game_tricks[0].first_player].append(discarded_card_point)
+
+        # Add turn points
+        for trick in game_tricks:
+            winner = trick.winner
+            point = trick.point
+            res[winner].append(point)
+
+        return res
+
+    @property
+    def team_scores(self) -> tuple[int, int]:
+        points = self.player_points
+        return sum(points[0]) + sum(points[2]), sum(points[1]) + sum(points[3])
+
+    @property
+    def starting_team(self) -> int:
+        return 0 if self.final_state.game_tricks[0].first_player in {0, 2} else 1
+
+    @property
+    def score(self) -> int:
+        team_scores = self.team_scores
+        if team_scores[self.starting_team] >= self.max_bid_value:
+            return self.max_bid_value
+        return -self.max_bid_value
+
+
+@dataclass
 class Shelem:
     pad_card: Card
     player_cards: list[list[Card]]
@@ -94,7 +145,6 @@ class Shelem:
     starting_player: int
 
     max_bid_value: int = -1
-    tricks: list[Trick] = field(default_factory=list)
     discarded_card: list[Card] = field(default_factory=set)
     validator: Validator | None = None
 
@@ -102,7 +152,7 @@ class Shelem:
         if self.validator is None:
             self.validator = Validator(self.pad_card)
 
-    def play(self):
+    def play(self) -> GameResults:
         for i in range(4):
             self.players[i].init(self.player_cards[i])
 
@@ -112,7 +162,6 @@ class Shelem:
         # discarding
         self.discarding_round(first_player)
 
-        print(f"Trick 1")
         state = self.set_trump(first_player)
 
         num_cards = sum((len(player_card) for player_card in self.player_cards))
@@ -120,7 +169,11 @@ class Shelem:
             card = self.players[state.player_idx].play(state)
             point, state = self.play_card(state, card)
 
-        self.report_results()
+        return GameResults(
+            discarded_card=self.discarded_card,
+            final_state=state,
+            max_bid_value=self.max_bid_value,
+        )
 
     def play_card(
         self, state: TurnState, current_player_action: Card
@@ -133,13 +186,11 @@ class Shelem:
 
         return point, state
 
-    def report_results(self):
-        pass
-
     def set_trump(self, first_player: int) -> TurnState:
         state = TurnState(
             players_cards=self.player_cards,
             current_trick=Trick(
+                # This is a dummy trump suit, it should not be matter in the first play!
                 trump_suit=-1,
                 cards=[self.pad_card, self.pad_card, self.pad_card, self.pad_card],
                 first_player=first_player,
@@ -147,12 +198,15 @@ class Shelem:
             player_valid_cards=self.player_cards[first_player],
             player_idx=first_player,
             validator=self.validator,
+            game_tricks=[],
         )
         # set the trump
         card = self.players[state.player_idx].play(state)
 
         point, state = self.play_card(state, card)
-        state = replace(state, trick=replace(state.current_trick, trump_suit=card.suit))
+        state = replace(
+            state, current_trick=replace(state.current_trick, trump_suit=card.suit)
+        )
         return state
 
     def discarding_round(self, first_player: int) -> None:

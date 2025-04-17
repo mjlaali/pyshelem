@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import json
 from dataclasses import dataclass, field
 
 from pyshelem.engine.card import Deck, Card
@@ -38,12 +40,10 @@ class StrVisualizer(Visualizer):
 
     def init(self, cards: list[Card], player_idx: int) -> None:
         self.player_cards[player_idx] = "".join(card.str_value for card in cards)
-        print(f"player {player_idx} cards: {self.player_cards[player_idx]}")
 
     def bid(
         self, cards: list[Card], bids: list[int], bid: int, player_idx: int
     ) -> None:
-        print(f"player {player_idx} bids as {bid}")
         self.bids = self.bids + [bid]
 
     def discard(
@@ -57,10 +57,8 @@ class StrVisualizer(Visualizer):
             self.discarded = chr(len(discarded) + ord("A")) + "".join(
                 card.str_value for card in discarded
             )
-            print(f"player {player_idx} discards {self.discarded}")
 
     def play(self, state: TurnState, card: Card, player_idx: int) -> None:
-        print(f"player {player_idx} plays {card.str_value}")
         self.current_round[player_idx] = card
 
         last_round = all(card is not None for card in self.current_round)
@@ -71,7 +69,6 @@ class StrVisualizer(Visualizer):
     @property
     def str_game(self) -> str:
         player_cards = "\n".join(self.player_cards)
-        print(self.bids)
         bids = (
             "".join(
                 ("*" + chr((bid - 95) // 5 + ord("A")) if bid is not None else "*")
@@ -82,7 +79,7 @@ class StrVisualizer(Visualizer):
         discarded = self.discarded
         plays = "\n".join(f"{i}: {play}" for i, play in enumerate(self.plays))
 
-        return f"cards:\n{player_cards}\n{bids}\n{discarded}\n{plays}"
+        return f"cards:\n{player_cards}\nbids:\n{bids}\ndiscarded:\n{discarded}\nplays:\n{plays}"
 
 
 @dataclass
@@ -314,6 +311,10 @@ if __name__ == "__main__":
     )
     visualizer = StrVisualizer()
     simulator = Simulator(str_game, visualizer)
-    simulator.shelem.play()
+    game_result = simulator.shelem.play()
 
+    print("\n\nHere is a summary of the game:\n")
+    print(f"game point: {game_result.score}")
+    print(f"team scores: {game_result.team_scores}")
+    print(f"starting team: {game_result.starting_team}")
     print(visualizer.str_game)
