@@ -1,13 +1,18 @@
+from __future__ import annotations
+
 import random
 from dataclasses import dataclass, field
+from functools import total_ordering
 from typing import ClassVar
 
 
+@total_ordering
 @dataclass(frozen=True)
 class Card:
     suit: int
     rank: int
     idx: int | None = field(default=None, compare=False, hash=False)
+    str_value: str | None = field(default=None, compare=False, hash=False)
 
     # 2 will be mapped to rank=0
     rank_score: ClassVar[dict[int, int]] = {
@@ -25,6 +30,14 @@ class Card:
             return 20 if self.rank > 0 else 10
         return self.rank_score.get(self.rank, 0)
 
+    def __eq__(self, other: Card) -> bool:
+        return not (self < other) and not (other < self)
+
+    def __lt__(self, other: Card) -> bool:
+        return self.suit < other.suit or (
+            self.suit == other.suit and self.rank < other.rank
+        )
+
 
 class Deck:
     def __init__(self, with_joker: bool = True):
@@ -37,13 +50,16 @@ class Deck:
             for ri, r in enumerate(
                 ("2", "3", "4", "5", "6", "7", "8", "9", "X", "J", "Q", "K", "A")
             ):
-                self.cards[idx] = self.cards[f"{r}{s}"] = Card(si, ri, idx)
+                str_value = f"{r}{s}"
+                self.cards[idx] = self.cards[str_value] = Card(si, ri, idx, str_value)
                 idx += 1
 
         if with_joker:
-            self.cards[idx] = self.cards["2J"] = Card(4, 0, idx)
+            str_value = "2J"
+            self.cards[idx] = self.cards[str_value] = Card(4, 0, idx, str_value)
             idx += 1
-            self.cards[idx] = self.cards["AJ"] = Card(4, 1, idx)
+            str_value = "AJ"
+            self.cards[idx] = self.cards[str_value] = Card(4, 1, idx, str_value)
             idx += 1
 
         self.len = idx

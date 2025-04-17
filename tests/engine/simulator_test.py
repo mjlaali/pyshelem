@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock
 
 from pyshelem.engine.card import Deck
-from pyshelem.engine.simulator import Simulator, Parser
+from pyshelem.engine.simulator import Simulator, Parser, Visualizer
 
 str_cards = (
     "3S5S4S7D6H4H7SKCAS4C6C9C2D5D3DJDJS8H4DJC2HKD8CQSXDQC9"
@@ -24,13 +24,14 @@ class TestParser(unittest.TestCase):
         parser.set_player_cards(str_cards)
 
         cards = deck.parse_cards(str_cards)
-        self.assertEquals(set(cards[0:12]), parser.player_cards[0])
-        self.assertEquals(set(cards[48:]), parser.left_over_cards)
+        self.assertEquals(list(cards[0:12]), parser.player_cards[0])
+        self.assertEquals(list(cards[48:]), parser.left_over_cards)
 
     def test_betting_round(self) -> None:
         parser = Parser()
-        parser.set_betting(betting=betting_round, first_player_idx=0)
+        parser.set_betting(betting=betting_round, starting_player_idx=0)
 
+        self.assertEquals(parser.starting_player_idx, 0)
         self.assertEquals(parser.bidding_winner, 3)
 
         player_bids = [[vale] for vale in (110, 115, 120, 125)]
@@ -47,7 +48,7 @@ class TestParser(unittest.TestCase):
 
     def test_set_other_events(self) -> None:
         parser = Parser()
-        parser.deck = MagicMock()
+        parser.deck = deck
         parser.bidding_winner = 3
         parser.set_discard_cards = MagicMock(return_value=parser)
         parser.set_plays = MagicMock(return_value=parser)
@@ -56,22 +57,45 @@ class TestParser(unittest.TestCase):
         parser.set_discard_cards.assert_called_once_with(
             str_discard_cards, parser.deck, parser.bidding_winner
         )
-        parser.set_plays.assert_called_once_with(plays, parser.deck)
+
+        cards = deck.parse_cards(plays)
+        trump_suit = cards[0].suit
+        parser.set_plays.assert_called_once_with(
+            cards, parser.bidding_winner, trump_suit
+        )
 
     def test_set_plays(self) -> None:
         parser = Parser()
         players_play = ["JH", "4H", "2H", "9H", "QH", "6H", "8H", "AH"]
 
-        str_plays = "".join(players_play)
+        cards = [deck[a_card] for a_card in players_play]
 
-        parser.set_plays(str_plays, deck)
+        parser.set_plays(cards, bidding_winner=3, trump_suit=deck["AH"].suit)
         expected_plays = [
-            [deck[players_play[i]], deck[players_play[i + 4]]] for i in range(4)
+            [deck["4H"], deck["6H"]],
+            [deck["2H"], deck["8H"]],
+            [deck["9H"], deck["AH"]],
+            [deck["JH"], deck["QH"]],
+        ]
+        self.assertEquals(parser.player_plays, expected_plays)
+
+    def test_set_plays_2(self) -> None:
+        parser = Parser()
+        players_play = ["9D", "9C", "JD", "XS", "QS", "KS", "3H", "5S"]
+
+        cards = [deck[a_card] for a_card in players_play]
+
+        parser.set_plays(cards, bidding_winner=3, trump_suit=deck["AH"].suit)
+        expected_plays = [
+            [deck["9C"], deck["5S"]],
+            [deck["JD"], deck["QS"]],
+            [deck["XS"], deck["KS"]],
+            [deck["9D"], deck["3H"]],
         ]
         self.assertEquals(parser.player_plays, expected_plays)
 
 
 class TestSimulator(unittest.TestCase):
     def test_read_game(self) -> None:
-        simulator = Simulator(str_game)
+        simulator = Simulator(str_game, Visualizer())
         self.assertIsNotNone(simulator.shelem)

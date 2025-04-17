@@ -19,14 +19,15 @@ validator = Validator(deck.pad_card)
                     {deck["3S"], deck["5S"]},
                     {deck["4H"], deck["6S"]},
                 ),
-                trick=Trick(
+                current_trick=Trick(
                     deck["AH"].suit,
                     cards=[deck["PAD"], deck["PAD"], deck["PAD"], deck["PAD"]],
                     first_player=0,
                 ),
-                player_valid_cards=(deck["AH"]),
+                player_valid_cards={deck["AH"], deck["2C"]},
                 player_idx=0,
                 validator=validator,
+                game_tricks=[],
             ),
             deck["AH"],
             TurnState(
@@ -36,7 +37,7 @@ validator = Validator(deck.pad_card)
                     {deck["3S"], deck["5S"]},
                     {deck["4H"], deck["6S"]},
                 ),
-                trick=Trick(
+                current_trick=Trick(
                     deck["AH"].suit,
                     cards=(deck["AH"], deck["PAD"], deck["PAD"], deck["PAD"]),
                     first_player=0,
@@ -44,6 +45,7 @@ validator = Validator(deck.pad_card)
                 player_valid_cards={deck["2H"]},
                 player_idx=1,
                 validator=validator,
+                game_tricks=[],
             ),
             id="first_player",
         ),
@@ -55,7 +57,7 @@ validator = Validator(deck.pad_card)
                     {deck["3S"], deck["5S"]},
                     {deck["4H"], deck["6S"]},
                 ),
-                trick=Trick(
+                current_trick=Trick(
                     deck["AH"].suit,
                     cards=(deck["AH"], deck["PAD"], deck["PAD"], deck["PAD"]),
                     first_player=0,
@@ -63,6 +65,7 @@ validator = Validator(deck.pad_card)
                 player_valid_cards={deck["2H"]},
                 player_idx=1,
                 validator=validator,
+                game_tricks=[],
             ),
             deck["2H"],
             TurnState(
@@ -72,7 +75,7 @@ validator = Validator(deck.pad_card)
                     {deck["3S"], deck["5S"]},
                     {deck["4H"], deck["6S"]},
                 ),
-                trick=Trick(
+                current_trick=Trick(
                     deck["AH"].suit,
                     cards=(deck["AH"], deck["2H"], deck["PAD"], deck["PAD"]),
                     first_player=0,
@@ -80,6 +83,7 @@ validator = Validator(deck.pad_card)
                 player_valid_cards={deck["3S"], deck["5S"]},
                 player_idx=2,
                 validator=validator,
+                game_tricks=[],
             ),
             id="second_player_no_card_with_H",
         ),
@@ -91,14 +95,15 @@ validator = Validator(deck.pad_card)
                     {deck["5S"]},
                     {deck["2J"], deck["6S"]},
                 ),
-                trick=Trick(
+                current_trick=Trick(
                     trump_suit=deck["AH"].suit,
                     cards=(deck["AH"], deck["2H"], deck["3S"], deck["PAD"]),
                     first_player=0,
                 ),
-                player_valid_cards={deck["3S"], deck["5S"]},
+                player_valid_cards={deck["2J"], deck["6S"]},
                 player_idx=3,
                 validator=validator,
+                game_tricks=[],
             ),
             deck["2J"],
             TurnState(
@@ -108,7 +113,7 @@ validator = Validator(deck.pad_card)
                     {deck["5S"]},
                     {deck["6S"]},
                 ),
-                trick=Trick(
+                current_trick=Trick(
                     trump_suit=deck["AH"].suit,
                     cards=(deck["PAD"], deck["PAD"], deck["PAD"], deck["PAD"]),
                     first_player=3,
@@ -116,12 +121,19 @@ validator = Validator(deck.pad_card)
                 player_valid_cards={deck["6S"]},
                 player_idx=3,
                 validator=validator,
+                game_tricks=[
+                    Trick(
+                        trump_suit=deck["AH"].suit,
+                        cards=(deck["AH"], deck["2H"], deck["3S"], deck["2J"]),
+                        first_player=0,
+                    )
+                ],
             ),
             id="last_player",
         ),
     ],
 )
 def test_turn_play(turn_state: TurnState, card: Card, next_state: TurnState):
-    turn_state.played(card)
+    turn_state.play(card)
 
     assert turn_state == next_state

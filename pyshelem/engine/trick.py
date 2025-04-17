@@ -11,7 +11,7 @@ class Trick:
 
     @property
     def winner(self) -> int:
-        first_card_suit = self.cards[0].suit
+        first_card_suit = self.cards[self.first_player].suit
         card_tuples = (
             (
                 Card.joker_suit == card.suit,  # joker
